@@ -1,4 +1,4 @@
-# CivicPulse AI — AI-Powered Civic Intelligence Platform
+# CIVICPLUSH_X — CivicPulse AI
 
 CivicPulse AI is an AI-powered civic intelligence platform that empowers citizens to report civic issues and enables government authorities to manage, route, and analyze civic complaints with predictive analytics and geospatial clustering.
 
