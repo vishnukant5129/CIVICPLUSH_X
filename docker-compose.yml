@@ -1,0 +1,104 @@
+# CivicPulse AI — Unified Docker Compose Stack
+# ===============================================
+# Unified single-command deployment stack:
+# Starts Frontend, Backend, MongoDB, and Redis.
+#
+# Usage:
+#   docker compose up --build
+#   docker compose ps
+#   docker compose down
+
+services:
+  # --- Backend (FastAPI) ---
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: civicpulse-backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      - APP_NAME=${APP_NAME:-CivicPulse AI}
+      - APP_DEBUG=${APP_DEBUG:-false}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017/civicpulse}
+      - MONGODB_DATABASE=${MONGODB_DATABASE:-civicpulse}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.6-flash}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-http://localhost:8000/api/v1/auth/google/callback}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 40s
+      retries: 5
+
+  # --- Frontend (React + Vite) ---
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: civicpulse-frontend
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:${BACKEND_PORT:-8000}
+      - VITE_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+  # --- MongoDB ---
+  mongodb:
+    image: mongo:7.0
+    container_name: civicpulse-mongodb
+    ports:
+      - "${MONGODB_PORT:-27017}:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --eval 'db.adminCommand(\"ping\").ok' | grep 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+
+  # --- Redis ---
+  redis:
+    image: redis:7-alpine
+    container_name: civicpulse-redis
+    ports:
+      - "${REDIS_PORT:-6381}:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+  uploads_data:
+    driver: local

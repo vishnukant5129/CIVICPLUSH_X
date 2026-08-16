@@ -1,0 +1,1 @@
+"""CivicPulse AI — Database package."""
