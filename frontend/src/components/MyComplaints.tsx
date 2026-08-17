@@ -4,12 +4,19 @@ import type { ComplaintResponse } from '../api/complaints';
 import { Card, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
-import { FileText, Plus, Calendar, Inbox, ArrowRight } from 'lucide-react';
+import { Input } from './ui/Input';
+import { Select } from './ui/Select';
+import { FileText, Plus, Calendar, Inbox, ArrowRight, Search } from 'lucide-react';
 
 export const MyComplaints: React.FC = () => {
   const [complaints, setComplaints] = useState<ComplaintResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
   useEffect(() => {
     loadComplaints();
@@ -58,6 +65,18 @@ export const MyComplaints: React.FC = () => {
     );
   }
 
+  const filteredComplaints = complaints
+    .filter(c => c.title.toLowerCase().includes(search.toLowerCase()) || c.description.toLowerCase().includes(search.toLowerCase()) || c.id.toLowerCase().includes(search.toLowerCase()))
+    .filter(c => statusFilter ? c.status === statusFilter : true)
+    .filter(c => categoryFilter ? c.category === categoryFilter : true)
+    .sort((a, b) => sortOrder === 'newest' 
+      ? new Date(b.created_at).getTime() - new Date(a.created_at).getTime() 
+      : new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
+  const categories = Array.from(new Set(complaints.map(c => c.category)));
+  const statuses = Array.from(new Set(complaints.map(c => c.status)));
+
   return (
     <div className="max-w-5xl mx-auto py-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -74,7 +93,46 @@ export const MyComplaints: React.FC = () => {
         </Button>
       </div>
 
-      {complaints.length === 0 ? (
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-end">
+        <div className="flex-1 w-full space-y-1">
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Search</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Input 
+              placeholder="Search by title, description or ID..." 
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+        
+        <div className="w-full md:w-48 space-y-1">
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</label>
+          <Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+            <option value="">All Statuses</option>
+            {statuses.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+          </Select>
+        </div>
+
+        <div className="w-full md:w-48 space-y-1">
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Category</label>
+          <Select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+            <option value="">All Categories</option>
+            {categories.map(c => <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>)}
+          </Select>
+        </div>
+
+        <div className="w-full md:w-40 space-y-1">
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sort</label>
+          <Select value={sortOrder} onChange={e => setSortOrder(e.target.value as any)}>
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+          </Select>
+        </div>
+      </div>
+
+      {filteredComplaints.length === 0 ? (
         <Card className="border-dashed border-2 shadow-none bg-slate-50/50">
           <CardContent className="flex flex-col items-center justify-center py-20 text-center">
             <Inbox className="h-12 w-12 text-slate-300 mb-4" />
@@ -89,7 +147,7 @@ export const MyComplaints: React.FC = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {complaints.map(c => (
+          {filteredComplaints.map(c => (
             <Card key={c.id} className="hover:shadow-md transition-all hover:border-slate-300 cursor-pointer group" onClick={() => window.location.href = `/complaints/${c.id}`}>
               <CardContent className="p-5">
                 <div className="flex justify-between items-start mb-3">

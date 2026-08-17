@@ -100,6 +100,10 @@ class Settings(BaseSettings):
         default=86400 * 7,  # 7 days
         description="Session lifetime in seconds.",
     )
+    civicpulse_bootstrap_admin_email: str = Field(
+        default="arbab2171217@gmail.com",
+        description="Email of the bootstrap super admin.",
+    )
 
     # --- Google OAuth ---
     google_client_id: str = Field(

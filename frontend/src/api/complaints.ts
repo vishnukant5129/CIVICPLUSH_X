@@ -3,6 +3,7 @@
  */
 
 import { apiFetch } from './client';
+import { API_BASE_URL } from '../config';
 
 export interface LocationData {
   geo: {
@@ -114,6 +115,10 @@ export const complaintsApi = {
     return apiFetch<EvidenceResponse[]>(`/api/v1/complaints/${complaintId}/evidence`, {
       method: 'GET',
     });
+  },
+
+  getEvidenceDownloadUrl: (complaintId: string, evidenceId: string) => {
+    return `${API_BASE_URL}/api/v1/complaints/${complaintId}/evidence/${evidenceId}/download`;
   },
 
   getAIAnalysis: (complaintId: string) => {

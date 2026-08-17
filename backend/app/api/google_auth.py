@@ -199,6 +199,11 @@ async def google_callback(
     repo = UserRepository(db)
     now = datetime.now(timezone.utc)
 
+    # Ensure bootstrap admin
+    target_role = UserRole.CITIZEN.value
+    if verified_email.lower() == settings.civicpulse_bootstrap_admin_email.lower():
+        target_role = UserRole.SUPER_ADMIN.value
+
     # Primary lookup: stable google_sub
     user_doc = await repo.find_by_google_sub(google_sub)
 
@@ -209,28 +214,30 @@ async def google_callback(
         if existing_by_email:
             # Link Google identity to existing email account
             user_id = existing_by_email["id"]
+            update_data = {
+                "google_sub": google_sub,
+                "profile_picture_url": picture_url,
+                "updated_at": now,
+            }
+            if target_role == UserRole.SUPER_ADMIN.value and existing_by_email.get("role") != target_role:
+                update_data["role"] = target_role
+                
             await repo.update_one(
                 user_id,
-                {
-                    "$set": {
-                        "google_sub": google_sub,
-                        "profile_picture_url": picture_url,
-                        "updated_at": now,
-                    }
-                },
+                {"$set": update_data},
             )
             user_doc = await repo.find_by_id(user_id)
             logger.info("Linked Google identity to existing account: %s", user_id)
 
         else:
-            # New user — create CITIZEN account
+            # New user
             new_user = {
                 "email": verified_email,
                 "normalized_email": verified_email.lower(),
                 "display_name": full_name,
                 "google_sub": google_sub,
                 "profile_picture_url": picture_url,
-                "role": UserRole.CITIZEN.value,
+                "role": target_role,
                 "status": UserStatus.ACTIVE.value,
                 "password_hash": None,
                 "created_at": now,
@@ -246,6 +253,11 @@ async def google_callback(
                 )
             user_doc = await repo.find_by_id(user_id)
             logger.info("New Google citizen registered: %s", user_id)
+    else:
+        # Ensure role is updated if they are bootstrap admin
+        if target_role == UserRole.SUPER_ADMIN.value and user_doc.get("role") != target_role:
+            await repo.update_one(user_doc["id"], {"$set": {"role": target_role}})
+            user_doc = await repo.find_by_id(user_doc["id"])
 
     # Verify account is active
     if user_doc.get("status") != UserStatus.ACTIVE.value:

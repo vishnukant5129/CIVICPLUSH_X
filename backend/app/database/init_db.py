@@ -39,6 +39,10 @@ COLLECTION_STATUS_HISTORY = "status_history"
 COLLECTION_NOTIFICATIONS = "notifications"
 COLLECTION_PREDICTIONS = "predictions"
 COLLECTION_AUDIT_LOGS = "audit_logs"
+COLLECTION_WARDS = "wards"
+COLLECTION_ORGANIZATIONS = "organizations"
+COLLECTION_CIVIC_PROJECTS = "civic_projects"
+COLLECTION_MATCH_REQUESTS = "resource_match_requests"
 
 
 async def ensure_indexes(db: AsyncDatabase) -> None:
@@ -55,6 +59,7 @@ async def ensure_indexes(db: AsyncDatabase) -> None:
 
     await _ensure_user_indexes(db)
     await _ensure_department_indexes(db)
+    await _ensure_ward_indexes(db)
     await _ensure_complaint_indexes(db)
     await _ensure_evidence_indexes(db)
     await _ensure_ai_analysis_indexes(db)
@@ -64,6 +69,9 @@ async def ensure_indexes(db: AsyncDatabase) -> None:
     await _ensure_notification_indexes(db)
     await _ensure_prediction_indexes(db)
     await _ensure_audit_log_indexes(db)
+    await _ensure_organization_indexes(db)
+    await _ensure_civic_project_indexes(db)
+    await _ensure_match_request_indexes(db)
 
     logger.info("Database indexes ensured successfully.")
 
@@ -120,6 +128,24 @@ async def _ensure_department_indexes(db: AsyncDatabase) -> None:
     await coll.create_index(
         [("status", ASCENDING)],
         name="idx_departments_status",
+    )
+
+async def _ensure_ward_indexes(db: AsyncDatabase) -> None:
+    """
+    Wards indexes.
+
+    - code: unique — ward codes must be unique.
+    - status: non-unique — supports filtering active wards.
+    """
+    coll = db[COLLECTION_WARDS]
+    await coll.create_index(
+        [("code", ASCENDING)],
+        unique=True,
+        name="idx_wards_code_unique",
+    )
+    await coll.create_index(
+        [("status", ASCENDING)],
+        name="idx_wards_status",
     )
 
 
@@ -318,4 +344,46 @@ async def _ensure_audit_log_indexes(db: AsyncDatabase) -> None:
     await coll.create_index(
         [("actor_id", ASCENDING)],
         name="idx_audit_logs_actor_id",
+    )
+
+async def _ensure_organization_indexes(db: AsyncDatabase) -> None:
+    coll = db[COLLECTION_ORGANIZATIONS]
+    await coll.create_index(
+        [("verification_status", ASCENDING)],
+        name="idx_organizations_verification_status",
+    )
+    await coll.create_index(
+        [("org_type", ASCENDING)],
+        name="idx_organizations_org_type",
+    )
+
+async def _ensure_civic_project_indexes(db: AsyncDatabase) -> None:
+    coll = db[COLLECTION_CIVIC_PROJECTS]
+    await coll.create_index(
+        [("project_code", ASCENDING)],
+        unique=True,
+        name="idx_civic_projects_code_unique",
+    )
+    await coll.create_index(
+        [("status", ASCENDING)],
+        name="idx_civic_projects_status",
+    )
+    await coll.create_index(
+        [("category", ASCENDING)],
+        name="idx_civic_projects_category",
+    )
+    await coll.create_index(
+        [("ward_id", ASCENDING)],
+        name="idx_civic_projects_ward_id",
+    )
+
+async def _ensure_match_request_indexes(db: AsyncDatabase) -> None:
+    coll = db[COLLECTION_MATCH_REQUESTS]
+    await coll.create_index(
+        [("project_id", ASCENDING), ("organization_id", ASCENDING)],
+        name="idx_match_requests_proj_org",
+    )
+    await coll.create_index(
+        [("status", ASCENDING)],
+        name="idx_match_requests_status",
     )

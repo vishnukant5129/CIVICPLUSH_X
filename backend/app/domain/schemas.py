@@ -36,6 +36,11 @@ from app.domain.enums import (
     PredictionType,
     UserRole,
     UserStatus,
+    CivicProjectStatus,
+    OrganizationType,
+    OrganizationVerificationStatus,
+    MatchRequestStatus,
+    OutcomeVerificationStatus,
 )
 
 
@@ -163,6 +168,14 @@ class UserDocument(BaseModel):
         default=None,
         description="Department reference (for authority users only).",
     )
+    ward_ids: List[str] = Field(
+        default_factory=list,
+        description="List of ward IDs for access scope.",
+    )
+    permissions: List[str] = Field(
+        default_factory=list,
+        description="List of explicit permission strings.",
+    )
     status: UserStatus = Field(
         default=UserStatus.ACTIVE, description="Account status."
     )
@@ -213,6 +226,35 @@ class DepartmentDocument(BaseModel):
     )
     description: Optional[str] = Field(
         default=None, max_length=1000, description="Department description."
+    )
+    status: DepartmentStatus = Field(
+        default=DepartmentStatus.ACTIVE, description="Operational status."
+    )
+    created_at: datetime = Field(
+        default_factory=_utcnow, description="Creation timestamp (UTC)."
+    )
+    updated_at: datetime = Field(
+        default_factory=_utcnow, description="Last update timestamp (UTC)."
+    )
+
+# ============================================================
+# Ward
+# ============================================================
+
+class WardDocument(BaseModel):
+    """
+    Ward persistence schema.
+    """
+
+    name: str = Field(
+        ..., min_length=1, max_length=200, description="Ward name."
+    )
+    code: str = Field(
+        ..., min_length=1, max_length=50,
+        description="Short code for the ward (e.g. 'W-12').",
+    )
+    description: Optional[str] = Field(
+        default=None, max_length=1000, description="Ward description."
     )
     status: DepartmentStatus = Field(
         default=DepartmentStatus.ACTIVE, description="Operational status."
@@ -279,6 +321,9 @@ class ComplaintDocument(BaseModel):
     )
     department_id: Optional[str] = Field(
         default=None, description="Assigned department reference."
+    )
+    ward_id: Optional[str] = Field(
+        default=None, description="Ward reference."
     )
     cluster_id: Optional[str] = Field(
         default=None, description="Incident cluster reference."
@@ -560,3 +605,74 @@ class AuditLogDocument(BaseModel):
     created_at: datetime = Field(
         default_factory=_utcnow, description="Action timestamp (UTC)."
     )
+
+# ============================================================
+# CivicPulse X Extensions
+# ============================================================
+
+class OrganizationDocument(BaseModel):
+    """
+    Organization persistence schema.
+    Collection: organizations
+    """
+    name: str = Field(..., max_length=200)
+    org_type: OrganizationType
+    description: Optional[str] = Field(default=None, max_length=2000)
+    website: Optional[str] = Field(default=None, max_length=500)
+    contact_email: Optional[str] = Field(default=None, max_length=254)
+    contact_phone: Optional[str] = Field(default=None, max_length=50)
+    service_regions: List[str] = Field(default_factory=list)
+    focus_areas: List[str] = Field(default_factory=list)
+    capabilities: List[str] = Field(default_factory=list)
+    verification_status: OrganizationVerificationStatus = Field(default=OrganizationVerificationStatus.PENDING)
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
+
+
+class CivicProjectDocument(BaseModel):
+    """
+    Civic Project persistence schema.
+    Collection: civic_projects
+    """
+    project_code: str = Field(..., max_length=50)
+    title: str = Field(..., max_length=300)
+    description: str = Field(..., max_length=5000)
+    problem_cluster_id: Optional[str] = None
+    
+    category: CivicCategory
+    subcategory: Optional[str] = None
+    
+    department_id: Optional[str] = None
+    ward_id: Optional[str] = None
+    
+    status: CivicProjectStatus = Field(default=CivicProjectStatus.IDENTIFIED)
+    severity: Optional[str] = None
+    priority: Optional[str] = None
+    
+    estimated_affected_population: Optional[int] = None
+    estimated_cost_min: Optional[float] = None
+    estimated_cost_max: Optional[float] = None
+    currency: Optional[str] = Field(default="INR")
+    
+    required_resources: List[str] = Field(default_factory=list)
+    impact_summary: Optional[str] = Field(default=None, max_length=2000)
+    
+    verification_status: str = Field(default="PENDING")
+    
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
+
+
+class ResourceMatchRequestDocument(BaseModel):
+    """
+    Resource Match Request persistence schema.
+    Collection: resource_match_requests
+    """
+    project_id: str = Field(...)
+    organization_id: str = Field(...)
+    resource_type: str = Field(..., max_length=100)
+    message: Optional[str] = Field(default=None, max_length=2000)
+    status: MatchRequestStatus = Field(default=MatchRequestStatus.SUBMITTED)
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
+

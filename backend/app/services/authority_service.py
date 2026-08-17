@@ -164,7 +164,7 @@ class AuthorityService:
         return True
 
     async def get_authority_dashboard_summary(
-        self, user_id: str, role: str, department_id: Optional[str] = None
+        self, user_id: str, role: str, department_id: Optional[str] = None, ward_ids: List[str] = None
     ) -> Dict[str, Any]:
         """
         Aggregate operational dashboard statistics for authority & admin users.
@@ -174,11 +174,12 @@ class AuthorityService:
 
         if role == "authority":
             if department_id:
+                dept_or = [{"department_id": department_id}, {"assigned_authority_id": user_id}]
+                if ward_ids:
+                    # In a real app we'd filter by complaint ward_id. For now, scoping by dept or assignments
+                    pass
                 match_filter = {
-                    "$or": [
-                        {"department_id": department_id},
-                        {"assigned_authority_id": user_id},
-                    ]
+                    "$or": dept_or
                 }
                 scope_note = f"Department operational scope ({department_id})"
             else:
@@ -245,6 +246,7 @@ class AuthorityService:
         user_id: str,
         role: str,
         department_id: Optional[str] = None,
+        ward_ids: List[str] = None,
         status_filter: Optional[str] = None,
         category_filter: Optional[str] = None,
         assignment_filter: Optional[str] = None,
@@ -271,13 +273,40 @@ class AuthorityService:
                 {"_id": {"$regex": search_query, "$options": "i"}},
             ]
 
-        if assignment_filter == "me":
-            assignments = await self.db["assignments"].find({"assigned_authority_id": user_id}).to_list(length=1000)
-            comp_ids = [a["complaint_id"] for a in assignments]
-            query["_id"] = {"$in": comp_ids}
-        elif assignment_filter == "unassigned":
-            assigned_ids = await self.db["assignments"].distinct("complaint_id", {"assigned_authority_id": {"$ne": None}})
-            query["_id"] = {"$nin": assigned_ids}
+        if role != "super_admin" and role != "admin":
+            scope_constraints = []
+            
+            # Strict Ward Scoping
+            if ward_ids:
+                scope_constraints.append({"ward_id": {"$in": ward_ids}})
+            
+            # Strict Department Scoping (via Assignment table or direct Complaint property if it had one)
+            # A complaint is assigned a department via the `assignments` collection.
+            # To query complaints by department, we must find matching assignments first.
+            if department_id:
+                dept_assignments = await self.db["assignments"].find({"department_id": department_id}).to_list(length=10000)
+                dept_comp_ids = [a["complaint_id"] for a in dept_assignments]
+                scope_constraints.append({"_id": {"$in": dept_comp_ids}})
+
+            if assignment_filter == "me":
+                my_assignments = await self.db["assignments"].find({"assigned_authority_id": user_id}).to_list(length=10000)
+                my_comp_ids = [a["complaint_id"] for a in my_assignments]
+                scope_constraints.append({"_id": {"$in": my_comp_ids}})
+            elif assignment_filter == "unassigned":
+                assigned_ids = await self.db["assignments"].distinct("complaint_id", {"assigned_authority_id": {"$ne": None}})
+                scope_constraints.append({"_id": {"$nin": assigned_ids}})
+
+            if scope_constraints:
+                query["$and"] = scope_constraints
+        else:
+            # Super Admin / Admin has global view, but can still use assignment_filter
+            if assignment_filter == "me":
+                assignments = await self.db["assignments"].find({"assigned_authority_id": user_id}).to_list(length=1000)
+                comp_ids = [a["complaint_id"] for a in assignments]
+                query["_id"] = {"$in": comp_ids}
+            elif assignment_filter == "unassigned":
+                assigned_ids = await self.db["assignments"].distinct("complaint_id", {"assigned_authority_id": {"$ne": None}})
+                query["_id"] = {"$nin": assigned_ids}
 
         allowed_sorts = {"created_at", "status", "category", "updated_at", "priority_score"}
         target_sort = sort_by if sort_by in allowed_sorts else "created_at"
@@ -312,7 +341,7 @@ class AuthorityService:
         }
 
     async def get_authority_complaint_detail(
-        self, complaint_id: str, user_id: str, role: str, department_id: Optional[str] = None
+        self, complaint_id: str, user_id: str, role: str, department_id: Optional[str] = None, ward_ids: List[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Enriched complaint detail view for authority & admin users.
@@ -320,6 +349,18 @@ class AuthorityService:
         complaint = await self.db["complaints"].find_one({"_id": complaint_id})
         if not complaint:
             return None
+
+        # Data Scoping Enforcement for detail view
+        if role != "super_admin" and role != "admin":
+            if ward_ids and complaint.get("ward_id") not in ward_ids:
+                return None
+            
+            if department_id:
+                assignment = await self.db["assignments"].find_one({"complaint_id": complaint_id})
+                if not assignment or assignment.get("department_id") != department_id:
+                    # Allow view if assigned directly to the authority
+                    if not assignment or assignment.get("assigned_authority_id") != user_id:
+                        return None
 
         complaint["_id"] = str(complaint["_id"])
         if isinstance(complaint.get("created_at"), datetime):

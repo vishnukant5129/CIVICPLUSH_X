@@ -20,6 +20,7 @@ class ComplaintCreateRequest(BaseModel):
     description: str = Field(..., min_length=10, max_length=5000)
     category: CivicCategory = Field(...)
     location: LocationData = Field(...)
+    ward_id: Optional[str] = Field(default=None)
 
 
 class ComplaintResponse(BaseModel):
@@ -33,6 +34,7 @@ class ComplaintResponse(BaseModel):
     status: ComplaintStatus
     priority_score: Optional[float] = None
     department_id: Optional[str] = None
+    ward_id: Optional[str] = None
     cluster_id: Optional[str] = None
     evidence_count: int
     created_at: datetime

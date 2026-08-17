@@ -55,8 +55,7 @@ async def get_prediction_hotspots(
     Get spatial grid hotspot risk analysis.
     Restricted to authority operational personnel and system administrators.
     """
-    allowed_roles = {UserRole.AUTHORITY, UserRole.ADMIN}
-    if current_user.role not in allowed_roles:
+    if current_user.role == UserRole.CITIZEN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access restricted. Operational spatial hotspot risk data requires authority or admin credentials.",
@@ -73,8 +72,7 @@ async def generate_predictions(
     Trigger manual generation of predictive models on persisted complaint data.
     Restricted to authority or admin users.
     """
-    allowed_roles = {UserRole.AUTHORITY, UserRole.ADMIN}
-    if current_user.role not in allowed_roles:
+    if current_user.role == UserRole.CITIZEN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only authority or admin users can trigger predictive intelligence pipeline execution.",

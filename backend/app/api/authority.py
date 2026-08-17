@@ -25,8 +25,12 @@ from app.services.integration_adapter import GovernmentIntegrationAdapter
 
 router = APIRouter(prefix="/api/v1/authority", tags=["Authority Operations"])
 
-authority_only = RoleChecker([UserRole.AUTHORITY, UserRole.ADMIN])
+async def authority_only_check(current_user: UserResponse = Depends(require_authenticated_user)) -> UserResponse:
+    if current_user.role == UserRole.CITIZEN:
+        raise HTTPException(status_code=403, detail="Authority access required")
+    return current_user
 
+authority_only = authority_only_check
 
 def get_auth_service() -> AuthorityService:
     db = get_database()
@@ -65,6 +69,7 @@ async def get_dashboard_summary(
         user_id=current_user.id,
         role=current_user.role.value,
         department_id=getattr(current_user, "department_id", None),
+        ward_ids=getattr(current_user, "ward_ids", []),
     )
     return AuthorityDashboardSummary(**summary)
 
@@ -89,6 +94,7 @@ async def get_complaint_queue(
         user_id=current_user.id,
         role=current_user.role.value,
         department_id=getattr(current_user, "department_id", None),
+        ward_ids=getattr(current_user, "ward_ids", []),
         status_filter=status_filter,
         category_filter=category_filter,
         assignment_filter=assignment_filter,
@@ -116,6 +122,7 @@ async def get_complaint_detail(
         user_id=current_user.id,
         role=current_user.role.value,
         department_id=getattr(current_user, "department_id", None),
+        ward_ids=getattr(current_user, "ward_ids", []),
     )
     if not detail:
         raise HTTPException(status_code=404, detail="Complaint not found")
@@ -146,7 +153,19 @@ async def download_evidence(
     if current_user.role == UserRole.CITIZEN:
         if complaint.get("user_id") != current_user.id:
             raise HTTPException(status_code=404, detail="Evidence record not found")
-    elif current_user.role not in [UserRole.AUTHORITY, UserRole.ADMIN]:
+    elif current_user.role in [UserRole.AUTHORITY, UserRole.ADMIN, UserRole.SUPER_ADMIN]:
+        # Validate Authority Scope
+        auth_service = AuthorityService(db)
+        has_access = await auth_service.get_authority_complaint_detail(
+            complaint_id=complaint_id,
+            user_id=current_user.id,
+            role=current_user.role.value,
+            department_id=getattr(current_user, "department_id", None),
+            ward_ids=getattr(current_user, "ward_ids", []),
+        )
+        if not has_access:
+             raise HTTPException(status_code=404, detail="Evidence record not found")
+    else:
         raise HTTPException(status_code=403, detail="Access denied")
 
     storage_key = evidence.get("storage_key")
@@ -190,6 +209,17 @@ async def assign_complaint(
     current_user: UserResponse = Depends(authority_only),
     auth_service: AuthorityService = Depends(get_auth_service),
 ):
+    # Data Scope Enforcement
+    detail = await auth_service.get_authority_complaint_detail(
+        complaint_id=complaint_id,
+        user_id=current_user.id,
+        role=current_user.role.value,
+        department_id=getattr(current_user, "department_id", None),
+        ward_ids=getattr(current_user, "ward_ids", []),
+    )
+    if not detail:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+
     try:
         success = await auth_service.assign_complaint(complaint_id, req.authority_id, req.department_id, current_user.id)
         if not success:
@@ -206,6 +236,17 @@ async def update_complaint_status(
     current_user: UserResponse = Depends(authority_only),
     auth_service: AuthorityService = Depends(get_auth_service),
 ):
+    # Data Scope Enforcement
+    detail = await auth_service.get_authority_complaint_detail(
+        complaint_id=complaint_id,
+        user_id=current_user.id,
+        role=current_user.role.value,
+        department_id=getattr(current_user, "department_id", None),
+        ward_ids=getattr(current_user, "ward_ids", []),
+    )
+    if not detail:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+
     try:
         success = await auth_service.update_status(complaint_id, current_user.id, req.new_status, req.note)
         if not success:
@@ -220,8 +261,20 @@ async def route_complaint(
     complaint_id: str,
     current_user: UserResponse = Depends(authority_only),
     routing_service: RoutingService = Depends(get_routing_service),
+    auth_service: AuthorityService = Depends(get_auth_service),
 ):
     """Manually trigger routing for a complaint based on data."""
+    # Data Scope Enforcement
+    detail = await auth_service.get_authority_complaint_detail(
+        complaint_id=complaint_id,
+        user_id=current_user.id,
+        role=current_user.role.value,
+        department_id=getattr(current_user, "department_id", None),
+        ward_ids=getattr(current_user, "ward_ids", []),
+    )
+    if not detail:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+
     db = routing_service.db
     complaint = await db["complaints"].find_one({"_id": complaint_id})
     if not complaint:
@@ -239,11 +292,23 @@ async def trigger_external_delivery(
     complaint_id: str,
     current_user: UserResponse = Depends(authority_only),
     adapter: GovernmentIntegrationAdapter = Depends(get_integration_adapter),
+    auth_service: AuthorityService = Depends(get_auth_service),
 ):
     """
     Attempts to deliver the complaint to a downstream municipal provider.
     Returns honest representation of integration configuration status.
     """
+    # Data Scope Enforcement
+    detail = await auth_service.get_authority_complaint_detail(
+        complaint_id=complaint_id,
+        user_id=current_user.id,
+        role=current_user.role.value,
+        department_id=getattr(current_user, "department_id", None),
+        ward_ids=getattr(current_user, "ward_ids", []),
+    )
+    if not detail:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+
     db = adapter.db
     complaint = await db["complaints"].find_one({"_id": complaint_id})
     if not complaint:

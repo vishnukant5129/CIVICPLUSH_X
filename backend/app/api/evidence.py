@@ -7,6 +7,9 @@ import logging
 from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
+import os
+from app.config import get_settings
 
 from app.database.mongodb import get_database
 from app.dependencies.auth import RoleChecker, require_authenticated_user
@@ -78,6 +81,36 @@ async def list_evidence(
     # The service internally checks ownership
     items = await evidence_service.get_evidence_for_complaint(complaint_id, current_user.id)
     return [EvidenceResponse(**doc) for doc in items]
+
+@router.get("/{complaint_id}/evidence/{evidence_id}/download")
+async def download_evidence(
+    complaint_id: str,
+    evidence_id: str,
+    current_user: UserResponse = Depends(citizen_only),
+    evidence_service: EvidenceService = Depends(get_evidence_service),
+):
+    """Secure, protected file download for citizen's evidence files."""
+    items = await evidence_service.get_evidence_for_complaint(complaint_id, current_user.id)
+    evidence = next((item for item in items if str(item.get("id")) == evidence_id), None)
+    
+    if not evidence:
+        raise HTTPException(status_code=404, detail="Evidence not found or unauthorized")
+        
+    storage_key = evidence.get("storage_key")
+    if not storage_key:
+        raise HTTPException(status_code=404, detail="File path missing")
+        
+    settings = get_settings()
+    absolute_path = os.path.join(settings.storage_path, storage_key)
+    
+    if not os.path.exists(absolute_path):
+        raise HTTPException(status_code=404, detail="File not found on storage")
+        
+    return FileResponse(
+        path=absolute_path,
+        media_type=evidence.get("mime_type", "application/octet-stream"),
+        filename=evidence.get("original_filename", "evidence_file"),
+    )
 
 
 @router.get("/{complaint_id}/ai", response_model=List[AIAnalysisResponse])

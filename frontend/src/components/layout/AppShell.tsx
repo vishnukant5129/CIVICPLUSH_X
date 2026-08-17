@@ -10,7 +10,10 @@ import {
   MapPin,
   Menu,
   X,
-  Activity
+  Activity,
+  Bell,
+  User,
+  HelpCircle
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 
@@ -34,8 +37,11 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
     { label: 'Predictive Intelligence', href: '/dashboard', icon: LayoutDashboard },
   ] : [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { label: 'Report a Problem', href: '/complaints/new', icon: PlusCircle },
     { label: 'My Complaints', href: '/complaints', icon: FileText },
-    { label: 'Report Issue', href: '/complaints/new', icon: PlusCircle },
+    { label: 'Notifications', href: '/notifications', icon: Bell },
+    { label: 'Profile', href: '/profile', icon: User },
+    { label: 'Help', href: '/help', icon: HelpCircle },
   ];
 
   if (!isAuthenticated) {

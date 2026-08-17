@@ -45,3 +45,6 @@ class UserResponse(BaseModel):
     display_name: str
     role: UserRole
     department_id: Optional[str] = None
+    ward_ids: list[str] = Field(default_factory=list)
+    permissions: list[str] = Field(default_factory=list)
+

@@ -140,7 +140,7 @@ export const Dashboard: React.FC = () => {
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             Good morning, {user?.display_name || 'Citizen'} <Hand className="h-6 w-6 text-yellow-500 animate-pulse" />
           </h1>
-          <p className="text-slate-500 mt-1">Here's what's happening in your community today.</p>
+          <p className="text-slate-500 mt-1">Here is the status of your reported civic problems.</p>
         </div>
         <Button onClick={() => window.location.href = '/complaints/new'} className="bg-indigo-600 hover:bg-indigo-700">
           + Report a Problem
@@ -155,7 +155,7 @@ export const Dashboard: React.FC = () => {
               <FileText className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">Total Complaints</p>
+              <p className="text-sm font-medium text-slate-500">Total Reports</p>
               <p className="text-3xl font-bold text-slate-900">{summary.total_complaints}</p>
             </div>
           </CardContent>
@@ -214,7 +214,7 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <Card className="border-0 shadow-sm rounded-xl lg:col-span-4">
           <CardHeader className="flex flex-row justify-between items-center pb-2">
-            <CardTitle className="text-lg font-bold text-slate-800">Complaints Overview</CardTitle>
+            <CardTitle className="text-lg font-bold text-slate-800">My Reports Overview</CardTitle>
             <div className="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full cursor-pointer">This Month ⌄</div>
           </CardHeader>
           <CardContent className="flex items-center gap-8 pt-4">
@@ -275,7 +275,7 @@ export const Dashboard: React.FC = () => {
 
         <Card className="border-0 shadow-sm rounded-xl lg:col-span-5 flex flex-col">
           <CardHeader className="flex flex-row justify-between items-center pb-4">
-            <CardTitle className="text-lg font-bold text-slate-800">Complaints Map</CardTitle>
+            <CardTitle className="text-lg font-bold text-slate-800">Map of My Reports</CardTitle>
             <button onClick={() => setIsFullMapOpen(true)} className="text-sm text-indigo-600 font-medium hover:underline cursor-pointer focus:outline-none">View Full Map</button>
           </CardHeader>
           <CardContent className="flex-1 p-0 pb-6 px-6">
@@ -313,7 +313,7 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <Card className="border-0 shadow-sm rounded-xl lg:col-span-4">
           <CardHeader className="flex flex-row justify-between items-center pb-2">
-            <CardTitle className="text-lg font-bold text-slate-800">Recent Complaints</CardTitle>
+            <CardTitle className="text-lg font-bold text-slate-800">My Recent Reports</CardTitle>
             <a href="/complaints" className="text-sm text-indigo-600 font-medium hover:underline">View All</a>
           </CardHeader>
           <CardContent className="pt-2 divide-y divide-slate-100">

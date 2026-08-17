@@ -35,6 +35,9 @@ from app.api.intelligence import router as intelligence_router
 from app.api.authority import router as authority_router
 from app.api.notifications import router as notifications_router
 from app.api.predictions import router as predictions_router
+from app.api.admin import router as admin_router
+from app.api.civic_projects import router as civic_projects_router
+from app.api.organizations import router as organizations_router
 from app.config import Settings, get_settings
 from app.database import mongodb, redis
 from app.database.init_db import ensure_indexes
@@ -156,8 +159,11 @@ def create_app() -> FastAPI:
     app.include_router(dashboard_router)
     app.include_router(intelligence_router)
     app.include_router(authority_router)
+    app.include_router(admin_router)
     app.include_router(notifications_router)
     app.include_router(predictions_router)
+    app.include_router(civic_projects_router)
+    app.include_router(organizations_router)
 
     return app
 

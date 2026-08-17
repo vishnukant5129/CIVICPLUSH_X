@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { authorityApi } from '../api/authority';
 import type { AuthorityDashboardSummary, AuthorityQueueResponse, AuthorityComplaintDetail } from '../api/authority';
 import { PredictiveIntelligence } from './PredictiveIntelligence';
+import { API_BASE_URL } from '../config';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -615,9 +616,15 @@ export const AuthorityDashboard: React.FC = () => {
                           {detail.evidence.map((ev: any) => (
                             <li key={ev._id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-slate-200 shadow-sm hover:border-slate-300 transition-colors">
                               <div className="flex items-center gap-3 overflow-hidden">
-                                <div className="p-2 bg-slate-100 text-slate-500 rounded">
-                                  <FolderLock className="h-4 w-4" />
-                                </div>
+                                {ev.mime_type && ev.mime_type.startsWith('image/') ? (
+                                  <div className="h-12 w-12 flex-shrink-0 rounded bg-slate-100 border border-slate-200 cursor-pointer" onClick={() => window.open(`${API_BASE_URL}/api/v1/authority/evidence/${ev._id}/download`, '_blank')}>
+                                    <img src={`${API_BASE_URL}/api/v1/authority/evidence/${ev._id}/download`} alt={ev.original_filename} className="h-full w-full object-cover hover:opacity-90 transition-opacity" crossOrigin="use-credentials" />
+                                  </div>
+                                ) : (
+                                  <div className="p-2 bg-slate-100 text-slate-500 rounded">
+                                    <FolderLock className="h-4 w-4" />
+                                  </div>
+                                )}
                                 <div className="min-w-0">
                                   <p className="text-sm font-medium text-slate-900 truncate">{ev.original_filename}</p>
                                   <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">{ev.mime_type}</p>
@@ -627,7 +634,7 @@ export const AuthorityDashboard: React.FC = () => {
                                 variant="outline"
                                 size="sm"
                                 className="shrink-0 ml-4 border-slate-200 text-slate-700 hover:bg-slate-50 h-8"
-                                onClick={() => window.open(`/api/v1/authority/evidence/${ev._id}/download`, '_blank')}
+                                onClick={() => window.open(`${API_BASE_URL}/api/v1/authority/evidence/${ev._id}/download`, '_blank')}
                               >
                                 <Download className="h-3.5 w-3.5 mr-1.5" />
                                 Download

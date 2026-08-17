@@ -74,18 +74,10 @@ export const ComplaintDetail: React.FC<{ complaintId: string }> = ({ complaintId
     }
   };
 
-  const handleProcessIntelligence = async () => {
-    try {
-      await intelligenceApi.processComplaint(complaintId);
-      alert('Intelligence processing scheduled. Please check back later.');
-      await loadData();
-    } catch (err: any) {
-      alert('Failed to process intelligence: ' + err.message);
-    }
-  };
+
 
   const getStatusBadgeVariant = (status: string) => {
-    switch(status) {
+    switch(status.toLowerCase()) {
       case 'submitted': return 'secondary';
       case 'assigned': return 'info';
       case 'in_progress': return 'warning';
@@ -93,6 +85,18 @@ export const ComplaintDetail: React.FC<{ complaintId: string }> = ({ complaintId
       case 'closed': return 'default';
       case 'rejected': return 'destructive';
       default: return 'outline';
+    }
+  };
+
+  const getStatusExplanation = (status: string) => {
+    switch(status.toLowerCase()) {
+      case 'submitted': return "Your report has been successfully recorded in the system.";
+      case 'assigned': return "Your report has been assigned to the responsible department.";
+      case 'in_progress': return "Your complaint is currently being worked on by the responsible civic authority.";
+      case 'resolved': return "The authority has marked this problem as fixed.";
+      case 'closed': return "This report has been officially closed.";
+      case 'rejected': return "This report was rejected. See the reason for details.";
+      default: return "";
     }
   };
 
@@ -188,16 +192,8 @@ export const ComplaintDetail: React.FC<{ complaintId: string }> = ({ complaintId
               <div className="flex justify-between items-center">
                 <CardTitle className="text-indigo-900 flex items-center gap-2">
                   <Network className="h-5 w-5 text-indigo-500" />
-                  Advanced Civic Intelligence
+                  Civic Problem Network
                 </CardTitle>
-                <Button 
-                  size="sm"
-                  onClick={handleProcessIntelligence}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-xs h-8"
-                >
-                  <Bot className="h-3.5 w-3.5 mr-1.5" />
-                  Process Relations
-                </Button>
               </div>
             </CardHeader>
             <CardContent className="pt-4 p-0">
@@ -251,7 +247,7 @@ export const ComplaintDetail: React.FC<{ complaintId: string }> = ({ complaintId
                             </div>
                             
                             <Button variant="outline" size="sm" className="w-full text-xs h-8 border-indigo-200 text-indigo-700 hover:bg-indigo-50" onClick={() => window.location.href = `/complaints/${rel.complaint_a_id === complaintId ? rel.complaint_b_id : rel.complaint_a_id}`}>
-                              View Related Issue
+                              View Related Report
                             </Button>
                           </div>
                         ))}
@@ -264,8 +260,7 @@ export const ComplaintDetail: React.FC<{ complaintId: string }> = ({ complaintId
               ) : (
                 <div className="p-8 text-center text-slate-500">
                   <Bot className="h-10 w-10 mx-auto text-slate-300 mb-3" />
-                  <p className="text-sm font-medium">Intelligence evaluation pending.</p>
-                  <p className="text-xs mt-1">Click "Process Relations" to run AI clustering.</p>
+                  <p className="text-sm font-medium">Analyzing problem network...</p>
                 </div>
               )}
             </CardContent>
@@ -300,6 +295,7 @@ export const ComplaintDetail: React.FC<{ complaintId: string }> = ({ complaintId
                     <div className="flex flex-col">
                       <span className="font-bold text-slate-800 text-sm">{h.new_status.toUpperCase().replace('_', ' ')}</span>
                       <span className="text-[10px] text-slate-400 font-medium">{new Date(h.created_at).toLocaleString()}</span>
+                      <p className="text-xs text-slate-500 mt-1">{getStatusExplanation(h.new_status)}</p>
                       {h.reason && (
                         <p className="text-xs text-slate-600 mt-1.5 p-2 bg-slate-50 rounded border border-slate-100 italic">
                           "{h.reason}"
@@ -350,12 +346,31 @@ export const ComplaintDetail: React.FC<{ complaintId: string }> = ({ complaintId
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {evidenceList.map(ev => (
                   <div key={ev.id} className="p-3 bg-white rounded-lg border border-slate-200 text-sm shadow-sm flex items-start gap-3">
-                    <div className="p-2 bg-slate-100 text-slate-500 rounded">
-                      <FileText className="h-4 w-4" />
-                    </div>
+                    {ev.mime_type && ev.mime_type.startsWith('image/') ? (
+                      <div className="h-16 w-16 flex-shrink-0 rounded-md overflow-hidden bg-slate-100 border border-slate-200 cursor-pointer" onClick={() => window.open(complaintsApi.getEvidenceDownloadUrl(complaintId, ev.id), '_blank')}>
+                        <img 
+                          src={complaintsApi.getEvidenceDownloadUrl(complaintId, ev.id)} 
+                          alt={ev.original_filename} 
+                          className="h-full w-full object-cover hover:opacity-90 transition-opacity"
+                          crossOrigin="use-credentials"
+                        />
+                      </div>
+                    ) : (
+                      <div className="p-2 bg-slate-100 text-slate-500 rounded flex-shrink-0">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-slate-800 text-xs truncate">{ev.original_filename}</p>
                       <p className="text-[10px] text-slate-500 mt-0.5">{(ev.size_bytes / 1024 / 1024).toFixed(2)} MB • {new Date(ev.created_at).toLocaleDateString()}</p>
+                      <a 
+                        href={complaintsApi.getEvidenceDownloadUrl(complaintId, ev.id)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-civic-600 hover:text-civic-700 mt-1 inline-block font-medium"
+                      >
+                        View Full Size
+                      </a>
                     </div>
                   </div>
                 ))}

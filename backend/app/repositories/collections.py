@@ -28,6 +28,10 @@ from app.database.init_db import (
     COLLECTION_PREDICTIONS,
     COLLECTION_STATUS_HISTORY,
     COLLECTION_USERS,
+    COLLECTION_WARDS,
+    COLLECTION_ORGANIZATIONS,
+    COLLECTION_CIVIC_PROJECTS,
+    COLLECTION_MATCH_REQUESTS,
 )
 from app.repositories.base import BaseRepository
 
@@ -65,6 +69,28 @@ class DepartmentRepository(BaseRepository):
 
     async def find_active(self) -> List[Dict[str, Any]]:
         """Find all active departments."""
+        return await self.find_many(
+            {"status": "active"},
+            sort=[("name", ASCENDING)],
+            limit=200,
+        )
+
+
+# ============================================================
+# Ward Repository
+# ============================================================
+
+class WardRepository(BaseRepository):
+    """Repository for ward documents."""
+
+    collection_name = COLLECTION_WARDS
+
+    async def find_by_code(self, code: str) -> Optional[Dict[str, Any]]:
+        """Find a ward by its unique code."""
+        return await self.find_one({"code": code})
+
+    async def find_active(self) -> List[Dict[str, Any]]:
+        """Find all active wards."""
         return await self.find_many(
             {"status": "active"},
             sort=[("name", ASCENDING)],
@@ -359,3 +385,48 @@ class AuditLogRepository(BaseRepository):
             skip=skip,
             limit=limit,
         )
+
+# ============================================================
+# Organization Repository
+# ============================================================
+
+class OrganizationRepository(BaseRepository):
+    collection_name = COLLECTION_ORGANIZATIONS
+
+    async def find_verified(self, limit: int = 50) -> List[Dict[str, Any]]:
+        return await self.find_many(
+            {"verification_status": "verified"},
+            sort=[("name", ASCENDING)],
+            limit=limit,
+        )
+
+
+# ============================================================
+# Civic Project Repository
+# ============================================================
+
+class CivicProjectRepository(BaseRepository):
+    collection_name = COLLECTION_CIVIC_PROJECTS
+
+    async def find_by_status(self, status: str, limit: int = 50) -> List[Dict[str, Any]]:
+        return await self.find_many(
+            {"status": status},
+            sort=[("created_at", DESCENDING)],
+            limit=limit,
+        )
+
+
+# ============================================================
+# Resource Match Request Repository
+# ============================================================
+
+class ResourceMatchRequestRepository(BaseRepository):
+    collection_name = COLLECTION_MATCH_REQUESTS
+
+    async def find_by_project(self, project_id: str) -> List[Dict[str, Any]]:
+        return await self.find_many(
+            {"project_id": project_id},
+            sort=[("created_at", DESCENDING)],
+            limit=50,
+        )
+

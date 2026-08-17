@@ -17,10 +17,13 @@ from enum import Enum
 
 class UserRole(str, Enum):
     """Roles a user can hold in the CivicPulse system."""
-
+    SUPER_ADMIN = "super_admin"
+    MUNICIPAL_ADMIN = "municipal_admin"
+    DEPARTMENT_HEAD = "department_head"
+    WARD_SUPERVISOR = "ward_supervisor"
+    AUTHORITY_OFFICER = "authority_officer"
+    FIELD_INSPECTOR = "field_inspector"
     CITIZEN = "citizen"
-    AUTHORITY = "authority"
-    ADMIN = "admin"
 
 
 class UserStatus(str, Enum):
@@ -158,3 +161,55 @@ class PredictionType(str, Enum):
     HOTSPOT = "hotspot"
     TREND = "trend"
     RECURRENCE = "recurrence"
+
+
+# --- CivicPulse X Extensions ---
+
+class CivicProjectStatus(str, Enum):
+    """Lifecycle statuses for a Civic Project."""
+    IDENTIFIED = "identified"
+    UNDER_VERIFICATION = "under_verification"
+    VERIFIED = "verified"
+    PROJECT_DEFINED = "project_defined"
+    OPEN_FOR_MATCHING = "open_for_matching"
+    MATCHED = "matched"
+    ACTION_PLANNED = "action_planned"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    OUTCOME_VERIFIED = "outcome_verified"
+
+
+class OrganizationType(str, Enum):
+    """Types of participating organizations."""
+    GOVERNMENT = "government"
+    CSR_ORGANIZATION = "csr_organization"
+    NGO = "ngo"
+    COMMUNITY_ORGANIZATION = "community_organization"
+    SERVICE_PROVIDER = "service_provider"
+    TECHNICAL_PARTNER = "technical_partner"
+
+
+class OrganizationVerificationStatus(str, Enum):
+    """Verification states for an organization."""
+    PENDING = "pending"
+    UNDER_REVIEW = "under_review"
+    VERIFIED = "verified"
+    SUSPENDED = "suspended"
+    REJECTED = "rejected"
+
+
+class MatchRequestStatus(str, Enum):
+    """States of a resource match request."""
+    SUBMITTED = "submitted"
+    UNDER_REVIEW = "under_review"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    WITHDRAWN = "withdrawn"
+
+
+class OutcomeVerificationStatus(str, Enum):
+    """States for the final project verification."""
+    PENDING = "pending"
+    PASSED = "passed"
+    FAILED = "failed"
+
