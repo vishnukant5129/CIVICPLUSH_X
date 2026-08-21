@@ -119,15 +119,15 @@ class Settings(BaseSettings):
         description="Google OAuth callback URI. Must match Google Cloud Console registration.",
     )
     ai_provider: str = Field(
-        default="groq",
-        description="AI Provider to use (e.g. groq).",
+        default="gemini",
+        description="AI Provider to use (e.g. gemini).",
     )
-    groq_api_key: str = Field(
+    gemini_api_key: str = Field(
         default="",
-        description="API Key for Groq. Required if provider is groq.",
+        description="API Key for Gemini. Required if provider is gemini.",
     )
-    ai_model: str = Field(
-        default="llama3-8b-8192",
+    gemini_model: str = Field(
+        default="gemini-1.5-flash",
         description="Model to use for AI analysis.",
     )
 

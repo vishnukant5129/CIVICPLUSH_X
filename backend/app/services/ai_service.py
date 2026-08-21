@@ -10,7 +10,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from groq import AsyncGroq
+import google.generativeai as genai
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.config import get_settings
@@ -63,15 +63,15 @@ class AIService:
             "complaint_id": complaint_id,
             "pipeline_version": "v1.0",
             "provider": self.settings.ai_provider,
-            "model": self.settings.ai_model,
+            "model": self.settings.gemini_model,
             "status": AIAnalysisStatus.PROCESSING.value,
         }
         analysis_id = await self.ai_repo.insert_one(analysis_doc)
 
-        # If Groq is the provider, execute call
-        if self.settings.ai_provider == "groq":
+        # If Gemini is the provider, execute call
+        if self.settings.ai_provider == "gemini":
             try:
-                result_data = await self._call_groq(complaint)
+                result_data = await self._call_gemini(complaint)
                 await self._mark_completed(analysis_id, result_data)
                 return await self.ai_repo.find_by_id(analysis_id)
             except Exception as e:
@@ -85,27 +85,26 @@ class AIService:
             await self._mark_failed(analysis_id, error_msg)
             return await self.ai_repo.find_by_id(analysis_id)
 
-    async def _call_groq(self, complaint: Dict[str, Any]) -> Dict[str, Any]:
-        """Call Groq API to analyze the complaint."""
-        if not self.settings.groq_api_key:
-            raise ValueError("Groq API Key is not configured.")
+    async def _call_gemini(self, complaint: Dict[str, Any]) -> Dict[str, Any]:
+        """Call Gemini API to analyze the complaint."""
+        if not self.settings.gemini_api_key:
+            raise ValueError("Gemini API Key is not configured.")
 
-        client = AsyncGroq(api_key=self.settings.groq_api_key)
+        genai.configure(api_key=self.settings.gemini_api_key)
         
         user_prompt = f"Title: {complaint.get('title')}\nDescription: {complaint.get('description')}"
-
-        # Timeout is handled via the Groq client's default timeout or can be set explicitly.
-        chat_completion = await client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            model=self.settings.ai_model,
-            temperature=0.0,
-            max_tokens=500,
+        
+        model = genai.GenerativeModel(
+            model_name=self.settings.gemini_model,
+            system_instruction=SYSTEM_PROMPT,
         )
 
-        response_content = chat_completion.choices[0].message.content
+        response = await model.generate_content_async(
+            user_prompt,
+            generation_config={"temperature": 0.0, "response_mime_type": "application/json"}
+        )
+
+        response_content = response.text
         if not response_content:
             raise ValueError("Empty response from AI.")
 
@@ -162,8 +161,8 @@ class AIService:
         """Mark analysis as failed."""
         # Sanitize error message to prevent leaking keys
         safe_error = error_message
-        if self.settings.groq_api_key and self.settings.groq_api_key in safe_error:
-            safe_error = safe_error.replace(self.settings.groq_api_key, "[REDACTED]")
+        if self.settings.gemini_api_key and self.settings.gemini_api_key in safe_error:
+            safe_error = safe_error.replace(self.settings.gemini_api_key, "[REDACTED]")
 
         await self.ai_repo.update_one(
             {"_id": self.ai_repo._get_object_id(analysis_id)},

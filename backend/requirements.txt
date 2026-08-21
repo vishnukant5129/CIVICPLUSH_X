@@ -24,7 +24,7 @@ google-auth==2.37.0
 requests==2.34.2
 
 # AI / LLM
-groq==0.18.0
+google-generativeai==0.7.2
 
 # Testing
 pytest==8.4.1
